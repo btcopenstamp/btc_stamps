@@ -30,7 +30,7 @@ from index_core.block_validation import (
     filter_block_transactions,
     validate_block_against_production,
 )
-from index_core.caching import cache_manager
+from index_core.caching import cache_manager, clear_all_caches
 from index_core.check import ConsensusError
 from index_core.database import (  # update_src20_token_stats,  # Now handled by async holder updater
     check_db_connection,
@@ -1333,6 +1333,10 @@ def follow(
                             break
 
                     except LedgerMismatchError as e:
+                        # Clear caches to prevent inconsistent state on retry
+                        clear_all_caches()
+                        logger.debug(f"Cleared all caches after ledger mismatch error: {e}")
+
                         if not handle_ledger_mismatch(e.block_index):
                             db.rollback()
                             break
@@ -1346,6 +1350,10 @@ def follow(
                             profiler.end_block_profiling()  # End profiling for this block
 
                     except ConsensusError as e:
+                        # Clear caches to prevent inconsistent state on retry
+                        clear_all_caches()
+                        logger.debug(f"Cleared all caches after consensus error: {e}")
+
                         logger.debug(f"ConsensusError caught in blocks.py, config.FORCE={config.FORCE}")
                         # Track consensus errors per block
                         consensus_error_key = f"consensus_error_{block_index}"
@@ -1376,6 +1384,10 @@ def follow(
                             time.sleep(min(5 * consensus_error_count, 30))
 
                     except Exception as e:
+                        # Clear caches to prevent inconsistent state on retry
+                        clear_all_caches()
+                        logger.debug(f"Cleared all caches after exception(#2): {e}")
+
                         logger.error(f"Error processing block {block_index}: {e}")
                         if "Duplicate entry" in str(e):
                             logger.warning(f"Rolling back block {block_index} due to duplicate key error")
@@ -1593,6 +1605,10 @@ def follow(
                 consecutive_errors = 0  # Reset error counter on successful iteration
 
             except (mysql.Error, mysql.OperationalError) as e:
+                # Clear caches to prevent inconsistent state on retry
+                clear_all_caches()
+                logger.debug(f"Cleared all caches after mysql error: {e}")
+
                 logger.error(f"Database error processing block {block_index}: {e}")
                 db.rollback()
 
@@ -1630,6 +1646,10 @@ def follow(
                     raise
 
             except CriticalBlockFetchError as e:
+                # Clear caches to prevent inconsistent state on retry
+                clear_all_caches()
+                logger.debug(f"Cleared all caches after critical block fetch error: {e}")
+
                 # Handle critical fetch errors that should halt execution
                 logger.critical(f"Critical error fetching data for block {e.block_index}: {e.reason}")
                 logger.critical("Indexer cannot continue safely with incomplete data. Exiting.")
@@ -1646,6 +1666,10 @@ def follow(
                 sys.exit(1)  # Exit the process
 
             except Exception as e:
+                # Clear caches to prevent inconsistent state on retry
+                clear_all_caches()
+                logger.debug(f"Cleared all caches after exception(#1): {e}")
+
                 # Check for MySQL deadlock error (1213)
                 is_deadlock = False
                 if hasattr(e, "args") and len(e.args) > 0:
