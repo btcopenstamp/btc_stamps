@@ -58,15 +58,22 @@ def create_check_hashes(
     # Filter out None values before sorting
     filtered_stamps = [stamp for stamp in valid_stamps_in_block if stamp is not None]
     sorted_valid_stamps = sorted(filtered_stamps, key=lambda x: x.get("stamp_number", 0))
+
     txlist_content = str(sorted_valid_stamps)
+    logger.info(f"===txlist_content: {txlist_content}")
     new_txlist_hash, found_txlist_hash = check.consensus_hash(
         db, block_index, "txlist_hash", previous_txlist_hash, txlist_content
     )
+    logger.info(f"===new_txlist_hash: {new_txlist_hash}")
+    logger.info(f"===found_txlist_hash: {found_txlist_hash}")
 
     ledger_content = str(processed_src20_in_block)
+    logger.info(f"===ledger_content: {ledger_content}")
     new_ledger_hash, found_ledger_hash = check.consensus_hash(
         db, block_index, "ledger_hash", previous_ledger_hash, ledger_content
     )
+    logger.info(f"===new_ledger_hash: {new_ledger_hash}")
+    logger.info(f"===found_ledger_hash: {found_ledger_hash}")
 
     messages_content = str(txhash_list)
     new_messages_hash, found_messages_hash = check.consensus_hash(
